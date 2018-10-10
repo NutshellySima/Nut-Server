@@ -512,23 +512,6 @@ void handleSocket(int Server, SSL_CTX *ctx, bool isHTTPS) {
 /* we have this global to let the callback get easy access to it */
 static pthread_mutex_t *lockarray;
 
-static void lock_callback(int mode, int type, char *file, int line) {
-  (void)file;
-  (void)line;
-  if (mode & CRYPTO_LOCK) {
-    pthread_mutex_lock(&(lockarray[type]));
-  } else {
-    pthread_mutex_unlock(&(lockarray[type]));
-  }
-}
-
-static unsigned long thread_id(void) {
-  unsigned long ret;
-
-  ret = (unsigned long)pthread_self();
-  return (ret);
-}
-
 static void init_locks(void) {
   int i;
 
