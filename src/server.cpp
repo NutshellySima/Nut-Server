@@ -159,7 +159,7 @@ void getFileContent(string &Content, string FileName, int &status,
     puts("AF_UNIX failed");
     exit(-1);
   }
-  size_t count = 0;
+  ssize_t count = 0;
   char buf[4096];
   Status = fork();
   if (Status > 0) {
@@ -172,7 +172,7 @@ void getFileContent(string &Content, string FileName, int &status,
     while ((count = read(pipes[1], buf, 4096)) != -1) {
       if (count == 0)
         break;
-      for (size_t i = 0; i < count; ++i)
+      for (ssize_t i = 0; i < count; ++i)
         Content.push_back(buf[i]);
     }
     close(pipes[1]);
@@ -448,10 +448,6 @@ void handleClientRequest(const int Client, const char *ADDR, SSL_CTX *ctx,
       ERR_print_errors_fp(stderr);
   }
   auto ClientRequest = receiveContent(Client, ssl);
-  bool EnableCompress =
-      ClientRequest.has_value()
-          ? checkSubstring(transfertoString(*ClientRequest), "gzip")
-          : false;
   std::string MessageStr;
   vector<unsigned char> Data;
   string method;
@@ -463,7 +459,6 @@ void handleClientRequest(const int Client, const char *ADDR, SSL_CTX *ctx,
     MessageStr = Result.first;
     Data = Result.second;
   } else {
-    int status = 301;
     string method_tmp, path, input; // Here we shadow method
     unordered_map<string, string> fields;
     parseRequest(Request, method_tmp, path, input, fields);
