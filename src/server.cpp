@@ -7,7 +7,8 @@ using namespace std;
 namespace fs = std::filesystem;
 
 template <typename T>
-bool checkSubstring(T ClientRequest, const std::string &needle) {
+bool checkSubstring(T ClientRequest, const std::string &needle)
+{
   bool Enable = true;
   auto in = ClientRequest;
   auto it = std::search(in.begin(), in.end(), needle.begin(), needle.end());
@@ -16,12 +17,14 @@ bool checkSubstring(T ClientRequest, const std::string &needle) {
   return Enable;
 }
 
-string findfield(string &request, string needle) {
+string findfield(string &request, string needle)
+{
   string finder = needle + ": .*\r\n";
   std::regex r(finder);
   auto begin = std::sregex_iterator(request.begin(), request.end(), r);
   auto end = std::sregex_iterator();
-  if (begin != end) {
+  if (begin != end)
+  {
     string ret = begin->str();
     // strip \r\n
     ret.pop_back();
@@ -33,11 +36,13 @@ string findfield(string &request, string needle) {
 }
 
 bool parseRequest(string request, string &method, string &path, string &input,
-                  unordered_map<string, string> &fields) {
+                  unordered_map<string, string> &fields)
+{
   string needle = "\r\n\r\n";
   auto it =
       std::search(request.begin(), request.end(), needle.begin(), needle.end());
-  if (it != request.end()) {
+  if (it != request.end())
+  {
     advance(it, 4);
     input = request.substr(it - request.begin());
   }
@@ -65,7 +70,8 @@ bool parseRequest(string request, string &method, string &path, string &input,
   return true;
 }
 
-void parseuri(string &uri, string &filename, string &cgiargs, bool &isCGI) {
+void parseuri(string &uri, string &filename, string &cgiargs, bool &isCGI)
+{
   uri = regex_replace(uri, std::regex("%20"), " ");
   filename = "." + uri;
   isCGI = checkSubstring(filename, "/cgi-bin");
@@ -73,9 +79,11 @@ void parseuri(string &uri, string &filename, string &cgiargs, bool &isCGI) {
     filename += "index.html";
   if (!isCGI)
     cgiargs = "";
-  else {
+  else
+  {
     auto pos = filename.find_first_of('?');
-    if (pos != std::string::npos) {
+    if (pos != std::string::npos)
+    {
       cgiargs = filename.substr(pos + 1);
       filename = filename.substr(0, pos);
     }
@@ -86,20 +94,24 @@ void getFileContent(string &Content, string FileName, int &status,
                     const string method = "", const char *ADDR = nullptr,
                     const string cgiargs = "", const string input = "",
                     bool isCGI = false,
-                    unordered_map<string, string> *fields = nullptr) {
+                    unordered_map<string, string> *fields = nullptr)
+{
   // First we clear the Content inside.
   Content.clear();
   // map a place for the child process to store validation status.
   char *FileValidationCode = static_cast<char *>(mmap(
       nullptr, 4, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0));
   pid_t Status = fork();
-  if (Status > 0) {
+  if (Status > 0)
+  {
     // Parent
     int childstatus = 0;
     waitpid(Status, &childstatus, 0);
     if (childstatus != 0)
       status = 500;
-  } else if (Status == 0) {
+  }
+  else if (Status == 0)
+  {
     // Child
     auto setStatus = [&](const char *S) {
       FileValidationCode[0] = S[0];
@@ -107,41 +119,52 @@ void getFileContent(string &Content, string FileName, int &status,
       FileValidationCode[2] = S[2];
     };
     // chroot
-    if (chroot("./pages") == -1) {
+    if (chroot("./pages") == -1)
+    {
       cerr << "chroot\n";
       setStatus("500");
       exit(-1);
     }
-    if (chdir("/") == -1) {
+    if (chdir("/") == -1)
+    {
       cerr << "chdir\n";
       setStatus("500");
       exit(-1);
     }
     struct stat sbuf;
-    if (stat(FileName.c_str(), &sbuf) < 0) {
+    if (stat(FileName.c_str(), &sbuf) < 0)
+    {
       setStatus("404");
       exit(0);
     }
-    if (!isCGI) { // static
-      if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
+    if (!isCGI)
+    { // static
+      if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode))
+      {
         setStatus("403");
         exit(0);
       }
-    } else { // Dynamic
-      if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
+    }
+    else
+    { // Dynamic
+      if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode))
+      {
         setStatus("403");
         exit(0);
       }
     }
     string CurrentDir = string(fs::current_path());
     string CanonicalFile = string(fs::canonical(fs::path(FileName)));
-    if (CanonicalFile.find(CurrentDir) != 0) {
+    if (CanonicalFile.find(CurrentDir) != 0)
+    {
       setStatus("403");
       exit(0);
     }
     setStatus("200");
     exit(0);
-  } else {
+  }
+  else
+  {
     puts("fork failed!");
     exit(-1);
   }
@@ -149,27 +172,32 @@ void getFileContent(string &Content, string FileName, int &status,
   int retstatus = atoi(static_cast<char *>(FileValidationCode));
   // unmap the filevalidationcode.
   munmap(FileValidationCode, 4);
-  if (retstatus != 200) {
+  if (retstatus != 200)
+  {
     status = retstatus;
     return;
   }
   // Here HTTP status is 200
   int pipes[2];
-  if (socketpair(AF_UNIX, SOCK_STREAM, 0, pipes) == -1) {
+  if (socketpair(AF_UNIX, SOCK_STREAM, 0, pipes) == -1)
+  {
     puts("AF_UNIX failed");
     exit(-1);
   }
   ssize_t count = 0;
   char buf[4096];
   Status = fork();
-  if (Status > 0) {
+  if (Status > 0)
+  {
     close(pipes[0]);
-    if (isCGI && method == "POST") {
+    if (isCGI && method == "POST")
+    {
       int wres = write(pipes[1], input.data(), input.size());
       (void)wres;
     }
     shutdown(pipes[1], SHUT_WR);
-    while ((count = read(pipes[1], buf, 4096)) != -1) {
+    while ((count = read(pipes[1], buf, 4096)) != -1)
+    {
       if (count == 0)
         break;
       for (ssize_t i = 0; i < count; ++i)
@@ -180,20 +208,26 @@ void getFileContent(string &Content, string FileName, int &status,
     waitpid(Status, &childstatus, 0); // child is dead
     if (childstatus != 0)
       status = 500;
-  } else if (Status == 0) {
+  }
+  else if (Status == 0)
+  {
     close(pipes[1]);
-    if (chdir("./pages") == -1) {
+    if (chdir("./pages") == -1)
+    {
       cerr << "chdir\n";
       exit(-1);
     }
-    if (!isCGI) {
+    if (!isCGI)
+    {
       // chroot
-      if (chroot(".") == -1) {
+      if (chroot(".") == -1)
+      {
         cerr << "chroot\n";
         exit(-1);
       }
       int FileData = open(FileName.c_str(), O_RDONLY);
-      if (FileData == -1) {
+      if (FileData == -1)
+      {
         cerr << "open\n";
         exit(-1);
       }
@@ -204,7 +238,9 @@ void getFileContent(string &Content, string FileName, int &status,
       close(FileData);
       close(pipes[0]);
       exit(0);
-    } else {
+    }
+    else
+    {
       setenv("QUERY_STRING", cgiargs.c_str(), 1);
       setenv("SERVER_PORT", "443", 1);
       string scriptname = FileName.substr(1);
@@ -214,7 +250,8 @@ void getFileContent(string &Content, string FileName, int &status,
       setenv("REQUEST_METHOD", method.c_str(), 1);
       setenv("GATEWAY_INTERFACE", "CGI/1.1", 1);
       setenv("HTTPS", "on", 1);
-      if (fields != nullptr) {
+      if (fields != nullptr)
+      {
         auto setter = [&](string Env, string key) {
           if (fields->find(key) != fields->end())
             setenv(Env.c_str(), (*fields)[key].c_str(), 1);
@@ -235,50 +272,54 @@ void getFileContent(string &Content, string FileName, int &status,
       close(pipes[0]);
       char *emptylist[] = {nullptr};
       int execres = execve(FileName.c_str(), emptylist, environ);
-      if (execres == -1) {
+      if (execres == -1)
+      {
         cerr << "exec failed!" << endl;
         exit(-1);
       }
     }
-  } else {
+  }
+  else
+  {
     puts("fork failed!");
     exit(-1);
   }
   assert(Status > 0 && "Only parent process can reach here");
 }
 
-template <typename T> string transfertoString(T Context) {
-  string ret;
-  for (auto i : Context)
-    ret += i;
-  return ret;
-}
-
 tuple<int, string, string, string, string, bool>
 produceContent(string request, const char *ADDR,
-               unordered_map<string, string> &fields) {
+               unordered_map<string, string> &fields)
+{
   string method, path, filename, content, cgiargs, input;
   bool isCGI = false;
   int status = 200;
   bool valid = parseRequest(request, method, path, input, fields);
-  if (valid) {
+  if (valid)
+  {
     parseuri(path, filename, cgiargs, isCGI);
     getFileContent(content, filename, status, method, ADDR, cgiargs, input,
                    isCGI, &fields);
   }
-  if (!valid) {
+  if (!valid)
+  {
     getFileContent(content, "400.html", status);
     status = 400;
-  } else if (method != "GET" && method != "HEAD" && method != "POST") {
+  }
+  else if (method != "GET" && method != "HEAD" && method != "POST")
+  {
     getFileContent(content, "501.html", status);
     status = 501;
-  } else if (status != 200) {
+  }
+  else if (status != 200)
+  {
     getFileContent(content, to_string(status) + ".html", status);
   }
   return make_tuple(status, content, filename, method, cgiargs, isCGI);
 }
 
-string getSuffix(string filename) {
+string getSuffix(string filename)
+{
   auto pos = filename.find_last_of('.');
   string Ret;
   if (pos != std::string::npos)
@@ -286,7 +327,8 @@ string getSuffix(string filename) {
   return Ret;
 }
 
-string getFileType(string filename) {
+string getFileType(string filename)
+{
   string Suffix = getSuffix(filename);
   static const unordered_map<string, string> MIME = {
       {".aac", "audio/aac"},
@@ -369,7 +411,8 @@ string getFileType(string filename) {
 }
 
 pair<string, vector<unsigned char>> produceAck(string request, string &method,
-                                               const char *ADDR) {
+                                               const char *ADDR)
+{
   // [Status, Content, fileType, method, cgiargs]
   unordered_map<string, string> fields;
   auto data = produceContent(request, ADDR, fields);
@@ -381,7 +424,8 @@ pair<string, vector<unsigned char>> produceAck(string request, string &method,
   method = get<3>(data);
   string cgiargs = get<4>(data);
   bool isCGI = get<5>(data);
-  switch (status) {
+  switch (status)
+  {
   case 200:
     MessageStr = "HTTP/1.1 200 OK\r\n";
     break;
@@ -413,10 +457,13 @@ pair<string, vector<unsigned char>> produceAck(string request, string &method,
   bool isText = checkSubstring(fileType, "text");
   bool EnableCompress =
       checkSubstring(fields["Accept-Encoding"], "gzip") && isText && !isCGI;
-  if (EnableCompress) {
+  if (EnableCompress)
+  {
     Data = compressContent<string>(Content);
     Content.clear();
-  } else {
+  }
+  else
+  {
     for (auto I : Content)
       Data.push_back(I);
   }
@@ -424,10 +471,11 @@ pair<string, vector<unsigned char>> produceAck(string request, string &method,
   if (fileType == "text/html")
     charset = "; charset=utf-8";
   MessageStr += "Server: Nut-Server\r\n";
-  MessageStr += "Connection: close\r\n";
+  MessageStr += "Connection: keep-alive\r\n";
   MessageStr +=
       "Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n";
-  if (!isCGI) {
+  if (!isCGI)
+  {
     MessageStr += "Content-length: " + std::to_string(Data.size()) + "\r\n";
     if (EnableCompress)
       MessageStr += "Content-Encoding: gzip\r\n";
@@ -440,59 +488,78 @@ pair<string, vector<unsigned char>> produceAck(string request, string &method,
 }
 
 void handleClientRequest(const int Client, const char *ADDR, SSL_CTX *ctx,
-                         bool isHTTPS) {
+                         bool isHTTPS)
+{
   SSL *ssl = isHTTPS ? SSL_new(ctx) : nullptr;
-  if (ssl) {
+  if (ssl)
+  {
     SSL_set_fd(ssl, Client);
     if (SSL_accept(ssl) <= 0)
       ERR_print_errors_fp(stderr);
   }
-  auto ClientRequest = receiveContent(Client, ssl);
-  std::string MessageStr;
-  vector<unsigned char> Data;
-  string method;
-  string Request =
-      ClientRequest.has_value() ? transfertoString(*ClientRequest) : string("");
-  if (isHTTPS) {
-    pair<string, vector<unsigned char>> Result;
-    Result = produceAck(Request, method, ADDR);
-    MessageStr = Result.first;
-    Data = Result.second;
-  } else {
-    string method_tmp, path, input; // Here we shadow method
-    unordered_map<string, string> fields;
-    parseRequest(Request, method_tmp, path, input, fields);
-    MessageStr = "HTTP/1.1 301 Moved Permanently\r\n";
-    MessageStr += "Connection: close\r\n";
-    MessageStr += "Location: https://" + fields["Host"] + path + "\r\n";
-    MessageStr += "\r\n";
+  while (true)
+  {
+    auto ClientRequest = receiveContent(Client, ssl);
+    std::string MessageStr;
+    vector<unsigned char> Data;
+    string method;
+    string Request =
+        ClientRequest.has_value() ? transfertoString(*ClientRequest) : string("");
+    if(Request=="")
+      break;
+    if (isHTTPS)
+    {
+      pair<string, vector<unsigned char>> Result;
+      Result = produceAck(Request, method, ADDR);
+      MessageStr = Result.first;
+      Data = Result.second;
+    }
+    else
+    {
+      string method_tmp, path, input; // Here we shadow method
+      unordered_map<string, string> fields;
+      parseRequest(Request, method_tmp, path, input, fields);
+      MessageStr = "HTTP/1.1 301 Moved Permanently\r\n";
+      MessageStr += "Connection: keep-alive\r\n";
+      MessageStr += "Location: https://" + fields["Host"] + path + "\r\n";
+      MessageStr += "\r\n";
+    }
+    if (ssl)
+    {
+      SSL_write(ssl, MessageStr.data(), MessageStr.size());
+      if (method != "HEAD")
+        SSL_write(ssl, Data.data(), Data.size());
+    }
+    else
+    {
+      send(Client, MessageStr.data(), MessageStr.size(), 0);
+      if (method != "HEAD")
+        send(Client, Data.data(), Data.size(), 0);
+    }
   }
-  if (ssl) {
-    SSL_write(ssl, MessageStr.data(), MessageStr.size());
-    if (method != "HEAD")
-      SSL_write(ssl, Data.data(), Data.size());
+  if(ssl)
     SSL_free(ssl);
-  } else {
-    send(Client, MessageStr.data(), MessageStr.size(), 0);
-    if (method != "HEAD")
-      send(Client, Data.data(), Data.size(), 0);
-  }
   int ClientCloseRes = close(Client);
-  if (ClientCloseRes == -1) {
+  if (ClientCloseRes == -1)
+  {
     cerr << "Client Close\n";
     exit(-1);
   }
 }
 
-void handleSocket(int Server, SSL_CTX *ctx, bool isHTTPS) {
-  while (true) {
+void handleSocket(int Server, SSL_CTX *ctx, bool isHTTPS)
+{
+  while (true)
+  {
     // Client handle
     int Client;
     struct sockaddr_in6 ClientAddr;
     socklen_t ClientAddrSize = sizeof(ClientAddr);
     Client = accept(Server, (struct sockaddr *)&ClientAddr, &ClientAddrSize);
-    if (Client == -1) {
-      if (errno != EAGAIN) {
+    if (Client == -1)
+    {
+      if (errno != EAGAIN)
+      {
         puts("accept err");
         cerr << "Error number: " << errno << endl;
       }
@@ -512,12 +579,14 @@ void handleSocket(int Server, SSL_CTX *ctx, bool isHTTPS) {
 /* we have this global to let the callback get easy access to it */
 static pthread_mutex_t *lockarray;
 
-static void init_locks(void) {
+static void init_locks(void)
+{
   int i;
 
   lockarray = (pthread_mutex_t *)OPENSSL_malloc(CRYPTO_num_locks() *
                                                 sizeof(pthread_mutex_t));
-  for (i = 0; i < CRYPTO_num_locks(); i++) {
+  for (i = 0; i < CRYPTO_num_locks(); i++)
+  {
     pthread_mutex_init(&(lockarray[i]), NULL);
   }
 
@@ -526,7 +595,8 @@ static void init_locks(void) {
       (void (*)(int, int, const char *, int))lock_callback);
 }
 
-static void kill_locks(void) {
+static void kill_locks(void)
+{
   int i;
 
   CRYPTO_set_locking_callback(NULL);
@@ -536,7 +606,8 @@ static void kill_locks(void) {
   OPENSSL_free(lockarray);
 }
 
-int main() {
+int main()
+{
   SSL_CTX *ctx;
 
   init_locks();

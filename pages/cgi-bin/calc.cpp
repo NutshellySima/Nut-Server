@@ -135,7 +135,7 @@ int main()
     input = regex_replace(input, std::regex("%2F"), "/");
     input = regex_replace(input, std::regex("%25"), "%");
     puts("Content-Type: text/html");
-    puts("");
+    
     string Result = R"(
 <!doctype html>
 <html lang="zh-cmn-Hans">
@@ -181,7 +181,8 @@ int main()
     {
         Result = regex_replace(Result, std::regex("%20"), e.what());
     }
-
+    cout<<"Content-length: " + std::to_string(Result.size()) + "\r\n";
+    printf("\r\n");
     cout << Result << endl;
     return 0;
 }

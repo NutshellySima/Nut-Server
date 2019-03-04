@@ -7,7 +7,7 @@ using namespace std;
 int main()
 {
     puts("Content-Type: text/html");
-    puts("");
+
     string Result = R"(
 <!doctype html>
 <html lang="zh-cmn-Hans">
@@ -44,6 +44,8 @@ int main()
     )";
 
     Result = regex_replace(Result, std::regex("%20"), getenv ("REMOTE_ADDR"));
+    cout<<"Content-length: " + std::to_string(Result.size()) + "\r\n";
+    printf("\r\n");
     cout << Result << endl;
     return 0;
 }
