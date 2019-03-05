@@ -70,6 +70,7 @@ void produceEpollClientRequest(const int Client)
     parseRequest(cons[Client].header, method_tmp, path, input, fields);
     MessageStr = "HTTP/1.1 301 Moved Permanently\r\n";
     MessageStr += "Connection: keep-alive\r\n";
+    MessageStr += "Content-length: 0\r\n";
     MessageStr += "Location: https://" + fields["Host"] + path + "\r\n";
     MessageStr += "\r\n";
     cons[Client].send = MessageStr;
@@ -109,7 +110,7 @@ void handleSend(int Client, int epfd)
             handleClose(Client, epfd);
         }
     }
-    handleClose(Client, epfd);
+    cons[Client] = Con();
 }
 
 void handleRead(int Client, int epfd)
