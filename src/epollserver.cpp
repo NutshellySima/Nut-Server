@@ -7,7 +7,7 @@ namespace fs = std::filesystem;
 void setnonblocking(int fd)
 {
     int flag = fcntl(fd, F_GETFL, 0);
-    sfcntl(fd, F_SETFL, flag | O_NONBLOCK);
+    fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 }
 
 struct Con
