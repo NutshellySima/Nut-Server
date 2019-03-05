@@ -4,16 +4,16 @@
 using namespace std;
 
 template <typename T>
-vector<unsigned char> compressContent(const T &Content)
+string compressContent(const T &Content)
 {
 	z_stream zs;
 	zs.zalloc = Z_NULL;
 	zs.zfree = Z_NULL;
 	zs.opaque = Z_NULL;
-	vector<unsigned char> Original;
+	string Original;
 	for (auto &I : Content)
 		Original.push_back(I);
-	zs.next_in = Original.data();
+	zs.next_in = reinterpret_cast<unsigned char*>(Original.data());
 	zs.avail_in = Original.size();
 	auto res = deflateInit2(&zs, 9, Z_DEFLATED, 31, 9, Z_DEFAULT_STRATEGY);
 	if (res != Z_OK)
@@ -45,7 +45,7 @@ vector<unsigned char> compressContent(const T &Content)
 		oss << "Exception during zlib compression: (" << ret << ") " << zs.msg;
 		throw(std::runtime_error(oss.str()));
 	}
-	vector<unsigned char> Message;
+	string Message;
 	for (auto I : outstring)
 		Message.push_back(I);
 	return Message;

@@ -59,7 +59,7 @@ void closeSocket(int Server)
 	}
 }
 
-bool checkFinishHeader(const std::vector<unsigned char>& receivedHeader)
+bool checkFinishHeader(const string& receivedHeader)
 {
 	if(receivedHeader.size()<4)
 		return false;
@@ -69,22 +69,21 @@ bool checkFinishHeader(const std::vector<unsigned char>& receivedHeader)
 	return false;
 }
 
-std::vector<unsigned char> receiveHTTPHeader(int Client, SSL *ssl)
+string receiveHTTPHeader(int Client, SSL *ssl)
 {
-	std::vector<unsigned char> receivedHeader;
-	std::array<unsigned char, 1> in;
+	string receivedHeader;
+	char in;
 	int Len;
 	while (true)
 	{
 		if (ssl)
-			Len = SSL_read(ssl, in.data(), 1);
+			Len = SSL_read(ssl, &in, 1);
 		else
-			Len = recv(Client, in.data(), 1, 0);
-		cerr<<in[0];
+			Len = recv(Client, &in, 1, 0);
 		// Error occurred
 		if (Len <= 0)
 			return receivedHeader;
-		receivedHeader.push_back(in[0]);
+		receivedHeader.push_back(in);
 		if(checkFinishHeader(receivedHeader))
 			return receivedHeader;
 	}
@@ -92,15 +91,14 @@ std::vector<unsigned char> receiveHTTPHeader(int Client, SSL *ssl)
 	return receivedHeader;
 }
 
-std::optional<std::vector<unsigned char>> receiveContent(int Client, SSL *ssl)
+string receiveContent(int Client, SSL *ssl)
 {
-	std::vector<unsigned char> Retval=receiveHTTPHeader(Client, ssl);
-	string s=transfertoString(Retval);
+	string s=receiveHTTPHeader(Client, ssl);
 	string length = findfield(s, "Content-Length");
 	int l=0;
 	if(length!="")
 		l=atoi(length.c_str());
-	std::array<unsigned char, 2048> in;
+	std::array<char, 2048> in;
 	int Len=s.size();
 	if(l!=0)
 	{
@@ -110,8 +108,9 @@ std::optional<std::vector<unsigned char>> receiveContent(int Client, SSL *ssl)
 			Len += recv(Client, in.data(), l, 0);
 	}
 	if (Len <= 0)
-		return std::nullopt;
-	for (int i = 0; i < Len-static_cast<int>(s.size()); ++i)
-		Retval.push_back(in[i]);
-	return Retval;
+		return "";
+	const int HeaderLength=static_cast<int>(s.size());
+	for (int i = 0; i < Len-HeaderLength; ++i)
+		s.push_back(in[i]);
+	return s;
 }
