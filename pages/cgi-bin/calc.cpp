@@ -87,6 +87,7 @@ int Break_expr(int left, int right)
 int main()
 {
     cin >> input;
+    puts("Content-Type: text/html");
     if (input.empty())
     {
         string Content = R"(
@@ -126,6 +127,8 @@ int main()
 
 </html>
         )";
+        cout<<"Content-length: " + std::to_string(Content.size()) + "\r\n";
+        printf("\r\n");
         cout << Content << endl;
         return 0;
     }
@@ -134,7 +137,7 @@ int main()
     input = regex_replace(input, std::regex("%2B"), "+");
     input = regex_replace(input, std::regex("%2F"), "/");
     input = regex_replace(input, std::regex("%25"), "%");
-    puts("Content-Type: text/html");
+    
     
     string Result = R"(
 <!doctype html>
