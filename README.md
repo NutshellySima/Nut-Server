@@ -36,7 +36,7 @@ $ ./server.out
 ## Caution
 1. You should make sure the CGI is **secured** or you should drop root privileges manually by modifying the server software or inside the CGI.
 2. This server does not support uploading files because lack of parsing of `multipart/form-data`.
-3. This server does not support long header+content requests in order to prevent malicious requests.
+3. You should take care of long header+content requests in order to prevent malicious requests.
 
 ## Example site
 
