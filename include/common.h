@@ -10,3 +10,4 @@ void closeSocket(int Server);
 
 string receiveContent(int Client, SSL *ssl);
 string findfield(string &request, string needle);
+bool checkFinishHeader(const string& receivedHeader);
