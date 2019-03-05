@@ -8,8 +8,6 @@ void setnonblocking(int fd)
 {
     int flag = fcntl(fd, F_GETFL, 0);
     int ret=fcntl(fd, F_SETFL, flag | O_NONBLOCK);
-    if(ret==-1)
-    cout<<"!!!!fcntl"<<endl;
 }
 
 struct Con
@@ -78,7 +76,6 @@ void produceEpollClientRequest(const int Client)
 
 void handleClose(int Client, int epfd)
 {
-    cerr<<"handleClose\n";
     cons.erase(Client);
     epoll_ctl(epfd, EPOLL_CTL_DEL, Client, nullptr);
     close(Client);
@@ -88,27 +85,15 @@ void handleSend(int Client, int epfd)
 {
     if (cons[Client].produced == false)
         return;
-    printf("handleSend\n");
-    cout<<cons[Client].sent<<" "<<cons[Client].send.size()<<endl;
     while (cons[Client].sent < cons[Client].send.size())
     {
-        cerr<<"send1\n";
         int val = send(Client, cons[Client].send.data() + cons[Client].sent, cons[Client].send.size() - cons[Client].sent, MSG_DONTWAIT);
-        cerr<<"send2\n";
         if (val == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-        {
-            cerr<<"EAGAIN\n";
             return;
-        }
         else if (val > 0)
-        {
             cons[Client].sent += val;
-            cerr<<"!"<<cons[Client].sent<<" "<<cons[Client].send.size()<<endl;
-        }
         else
-        {
             handleClose(Client, epfd);
-        }
     }
     cons[Client] = Con();
 }
@@ -116,7 +101,6 @@ void handleSend(int Client, int epfd)
 void handleRead(int Client, int epfd)
 {
     // Assume no pipelining
-    printf("receiveEpollHTTPHeader\n");
     if (!cons[Client].hasheader)
         receiveEpollHTTPHeader(Client);
     if (cons[Client].hasheader && cons[Client].header.size() == 0)
@@ -131,10 +115,8 @@ void handleRead(int Client, int epfd)
         if (length != "")
             cons[Client].leftsize = atoi(length.c_str());
     }
-    printf("receiveEpollContent\n");
     if (cons[Client].hasheader && !cons[Client].hasbody)
         receiveEpollContent(Client);
-    printf("produceEpollClientRequest\n");
     if (cons[Client].produced == false && cons[Client].hasbody)
     {
         cons[Client].produced = true;
@@ -165,7 +147,6 @@ void handleEpollSocket(int Server)
                 Client = accept(Server, (struct sockaddr *)&ClientAddr, &ClientAddrSize);
                 if (Client == -1)
                     continue;
-                printf("Epoll Accept\n");
                 setnonblocking(Client);
                 ev.data.fd = Client;
                 ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
@@ -176,20 +157,11 @@ void handleEpollSocket(int Server)
             {
                 int event = evs[i].events;
                 if (event & EPOLLIN)
-                {
-                    printf("Epoll Read\n");
                     handleRead(evs[i].data.fd, epfd);
-                }
                 else if (event & (EPOLLOUT | EPOLLRDHUP))
-                {
-                    printf("Epoll Send\n");
                     handleSend(evs[i].data.fd, epfd);
-                }
                 else if (event & (EPOLLHUP | EPOLLERR))
-                {
-                    printf("Epoll Close\n");
                     handleClose(evs[i].data.fd, epfd);
-                }
             }
         }
     }
