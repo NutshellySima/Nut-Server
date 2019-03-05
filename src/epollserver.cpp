@@ -7,7 +7,7 @@ namespace fs = std::filesystem;
 void setnonblocking(int fd)
 {
     int flag = fcntl(fd, F_GETFL, 0);
-    sfcntl(fd, F_SETFL, flag | O_NONBLOCK);
+    fcntl(fd, F_SETFL, flag | O_NONBLOCK);
 }
 
 struct Con
@@ -48,7 +48,7 @@ void receiveEpollContent(int Client)
     std::array<char, 2048> in;
     while (true)
     {
-        if(cons[Client].leftsize==0)
+        if (cons[Client].leftsize == 0)
             cons[Client].hasbody = true;
         int Len = recv(Client, in.data(), cons[Client].leftsize, 0);
         if (Len <= 0)
@@ -89,12 +89,22 @@ void handleSend(int Client, int epfd)
     {
         int val = send(Client, cons[Client].send.data() + cons[Client].sent, cons[Client].send.size() - cons[Client].sent, MSG_DONTWAIT);
         if (val == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            struct epoll_event ev;
+            ev.data.fd = Client;
+            ev.events = EPOLLIN | EPOLLOUT;
+            epoll_ctl(epfd, EPOLL_CTL_MOD, Client, &ev);
             return;
+        }
         else if (val > 0)
             cons[Client].sent += val;
         else
             handleClose(Client, epfd);
     }
+    struct epoll_event ev;
+    ev.data.fd = Client;
+    ev.events = EPOLLIN;
+    epoll_ctl(epfd, EPOLL_CTL_MOD, Client, &ev);
     cons[Client] = Con();
 }
 
@@ -105,7 +115,7 @@ void handleRead(int Client, int epfd)
         receiveEpollHTTPHeader(Client);
     if (cons[Client].hasheader && cons[Client].header.size() == 0)
     {
-        handleClose(Client,epfd);
+        handleClose(Client, epfd);
         return;
     }
     if (cons[Client].hasheader && !cons[Client].hasbody && cons[Client].leftsize == 0)
@@ -149,7 +159,7 @@ void handleEpollSocket(int Server)
                     continue;
                 setnonblocking(Client);
                 ev.data.fd = Client;
-                ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+                ev.events = EPOLLIN;
                 cons[Client] = Con();
                 epoll_ctl(epfd, EPOLL_CTL_ADD, Client, &ev);
             }
